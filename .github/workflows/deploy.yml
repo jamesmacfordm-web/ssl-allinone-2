@@ -29,7 +29,7 @@ permissions:
   contents: read
 
 env:
-  TF_VERSION: "1.6.0"
+  TF_VERSION: "1.9.0"
   AWS_REGION: "af-south-1"
 
 jobs:
