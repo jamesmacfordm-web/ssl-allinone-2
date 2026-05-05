@@ -78,7 +78,7 @@ jobs:
   deploy-uat:
     name: "Deploy UAT"
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/uat' && github.event_name == 'push'
+    if: github.ref == 'refs/heads/uat'
 
     steps:
       - name: Checkout Code
