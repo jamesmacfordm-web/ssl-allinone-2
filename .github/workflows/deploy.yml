@@ -58,7 +58,7 @@ jobs:
 
       - name: Terraform Init (Dev)
         working-directory: Dev
-        run: terraform init
+        run: terraform init -upgrade
 
       - name: Terraform Validate (Dev)
         working-directory: Dev
@@ -97,7 +97,7 @@ jobs:
 
       - name: Terraform Init (UAT)
         working-directory: UAT
-        run: terraform init
+        run: terraform init -upgrade
 
       - name: Terraform Validate (UAT)
         working-directory: UAT
@@ -138,7 +138,7 @@ jobs:
 
       - name: Terraform Init (Prod)
         working-directory: Prod
-        run: terraform init
+        run: terraform init -upgrade
 
       - name: Terraform Validate (Prod)
         working-directory: Prod
