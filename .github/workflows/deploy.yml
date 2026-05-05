@@ -1,0 +1,160 @@
+name: AWS Terraform CI/CD
+
+on:
+  push:
+    branches:
+      - develop   # triggers Dev deployment
+      - uat       # triggers UAT deployment
+      - main      # triggers Prod deployment
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy'
+        required: true
+        type: choice
+        options:
+          - dev
+          - uat
+          - production
+      destroy:
+        description: 'Destroy infrastructure?'
+        required: true
+        type: choice
+        options:
+          - 'false'
+          - 'true'
+
+permissions:
+  id-token: write   # Required for OIDC
+  contents: read
+
+env:
+  TF_VERSION: "1.6.0"
+  AWS_REGION: "us-west-2"
+
+jobs:
+  # ─────────────────────────────────────────────────────────────
+  # DEV — triggered on push to develop
+  # ─────────────────────────────────────────────────────────────
+  deploy-dev:
+    name: "Deploy Dev"
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/develop' && github.event_name == 'push'
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS Credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::REPLACE_ACCOUNT_ID:role/GitHubActionsRole
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+
+      - name: Terraform Init (Dev)
+        working-directory: Dev
+        run: terraform init
+
+      - name: Terraform Validate (Dev)
+        working-directory: Dev
+        run: terraform validate
+
+      - name: Terraform Plan (Dev)
+        working-directory: Dev
+        run: terraform plan -out=tfplan
+
+      - name: Terraform Apply (Dev)
+        working-directory: Dev
+        run: terraform apply -auto-approve tfplan
+
+  # ─────────────────────────────────────────────────────────────
+  # UAT — triggered on push to uat
+  # ─────────────────────────────────────────────────────────────
+  deploy-uat:
+    name: "Deploy UAT"
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/uat' && github.event_name == 'push'
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS Credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::REPLACE_ACCOUNT_ID:role/GitHubActionsRole
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+
+      - name: Terraform Init (UAT)
+        working-directory: UAT
+        run: terraform init
+
+      - name: Terraform Validate (UAT)
+        working-directory: UAT
+        run: terraform validate
+
+      - name: Terraform Plan (UAT)
+        working-directory: UAT
+        run: terraform plan -out=tfplan
+
+      - name: Terraform Apply (UAT)
+        working-directory: UAT
+        run: terraform apply -auto-approve tfplan
+
+  # ─────────────────────────────────────────────────────────────
+  # PROD — triggered manually via workflow_dispatch
+  # ─────────────────────────────────────────────────────────────
+  deploy-prod:
+    name: "Deploy Production"
+    runs-on: ubuntu-latest
+    if: |
+      (github.ref == 'refs/heads/main' && github.event_name == 'push') ||
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'production')
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS Credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::REPLACE_ACCOUNT_ID:role/GitHubActionsRole
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+
+      - name: Terraform Init (Prod)
+        working-directory: Prod
+        run: terraform init
+
+      - name: Terraform Validate (Prod)
+        working-directory: Prod
+        run: terraform validate
+
+      - name: Terraform Plan (Prod) — Apply
+        working-directory: Prod
+        if: github.event.inputs.destroy != 'true'
+        run: terraform plan -out=tfplan
+
+      - name: Terraform Apply (Prod)
+        working-directory: Prod
+        if: github.event.inputs.destroy != 'true'
+        run: terraform apply -auto-approve tfplan
+
+      - name: Terraform Destroy (Prod)
+        working-directory: Prod
+        if: github.event.inputs.destroy == 'true'
+        run: terraform destroy -auto-approve
